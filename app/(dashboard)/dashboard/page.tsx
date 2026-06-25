@@ -1,6 +1,7 @@
-import XPBar from '@/components/XPBar'
-import { DEMO_PROFILE, VIDEOS, PLANS } from '@/lib/data'
+import { createClient } from '@/lib/supabase/server'
+import { VIDEOS, PLANS, DEMO_PROFILE } from '@/lib/data'
 import { getLevelForXP } from '@/types'
+import XPBar from '@/components/XPBar'
 import Link from 'next/link'
 
 const DAILY_CHALLENGE = {
@@ -11,15 +12,41 @@ const DAILY_CHALLENGE = {
   total: 3,
 }
 
-export default function DashboardPage() {
-  const profile = DEMO_PROFILE
+export default async function DashboardPage() {
+  // Try to load real profile, fall back to demo data
+  let profile = DEMO_PROFILE
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+      if (data) {
+        profile = {
+          user_id: data.id,
+          level: data.level,
+          xp: data.xp,
+          streak_count: data.streak_count,
+          last_active: data.last_active,
+          skill_ratings: {
+            serve: data.skill_serve,
+            pass: data.skill_pass,
+            set: data.skill_set,
+            attack: data.skill_attack,
+            block: data.skill_block,
+            defense: data.skill_defense,
+            fitness: data.skill_fitness,
+          },
+        }
+      }
+    }
+  } catch {}
+
   const level = getLevelForXP(profile.xp)
   const recentVideos = VIDEOS.slice(0, 4)
   const activePlan = PLANS[1]
 
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-black">Hey, Athlete! 👋</h1>
@@ -30,7 +57,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* XP Bar */}
       <XPBar xp={profile.xp} level={level} />
 
       {/* Daily Challenge */}
@@ -68,11 +94,7 @@ export default function DashboardPage() {
               <h3 className="font-bold">{activePlan.title}</h3>
               <p className="text-xs opacity-60 mt-1">{activePlan.duration_weeks} weeks · {activePlan.days_per_week}x/week · {activePlan.session_length}</p>
             </div>
-            <Link
-              href="/plans"
-              className="text-sm font-bold px-4 py-2 rounded-lg transition-opacity hover:opacity-80"
-              style={{ background: 'var(--gold)', color: '#000' }}
-            >
+            <Link href="/plans" className="text-sm font-bold px-4 py-2 rounded-lg" style={{ background: 'var(--gold)', color: '#000' }}>
               Continue
             </Link>
           </div>
@@ -106,12 +128,11 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Stats row */}
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: 'Sessions', value: '12', icon: '💪' },
-          { label: 'Videos', value: '34', icon: '🎬' },
-          { label: 'Badges', value: '3', icon: '🏅' },
+          { label: 'Level', value: level, icon: '⭐' },
+          { label: 'Total XP', value: profile.xp.toLocaleString(), icon: '💎' },
+          { label: 'Streak', value: `${profile.streak_count}🔥`, icon: '' },
         ].map(s => (
           <div key={s.label} className="rounded-xl p-3 text-center" style={{ background: 'var(--surface)' }}>
             <div className="text-2xl mb-1">{s.icon}</div>
