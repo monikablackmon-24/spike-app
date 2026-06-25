@@ -1,6 +1,7 @@
 'use client'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 
 const NAV = [
   { href: '/dashboard', label: 'Home', icon: '🏠' },
@@ -12,15 +13,23 @@ const NAV = [
 
 export default function Nav() {
   const path = usePathname()
+  const router = useRouter()
+
+  async function signOut() {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push('/login')
+    router.refresh()
+  }
+
   return (
     <>
-      {/* Sidebar for desktop */}
       <aside className="hidden md:flex flex-col w-56 min-h-screen border-r py-6 px-3 shrink-0" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
         <div className="flex items-center gap-2 px-3 mb-8">
           <span className="text-2xl">🏐</span>
           <span className="text-xl font-black tracking-tight" style={{ color: 'var(--gold)' }}>SPIKE</span>
         </div>
-        <nav className="flex flex-col gap-1">
+        <nav className="flex flex-col gap-1 flex-1">
           {NAV.map(n => (
             <Link
               key={n.href}
@@ -36,9 +45,14 @@ export default function Nav() {
             </Link>
           ))}
         </nav>
+        <button
+          onClick={signOut}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium opacity-50 hover:opacity-100 transition-opacity mt-4"
+        >
+          <span>🚪</span> Sign out
+        </button>
       </aside>
 
-      {/* Bottom nav for mobile */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 flex border-t z-50" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
         {NAV.map(n => (
           <Link
